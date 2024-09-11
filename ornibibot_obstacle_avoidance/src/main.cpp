@@ -9,6 +9,7 @@
 #include <math.h>
 #include <atomic>
 #include <cstdint>
+#include <vector>
 
 #define IMAGE_WIDTH 8  // Assuming 8x8 ToF sensor array
 #define SAFETY_DISTANCE 1000  // in mm
@@ -20,6 +21,7 @@ IntervalTimer obstacle_avoidance_timer;
 IntervalTimer interpolation_pattern_timer;
 IntervalTimer sbus_update_timer;
 
+int i=0;
 using namespace Eigen;
 
 SparkFun_VL53L5CX myImager;
@@ -49,6 +51,13 @@ struct ornibibot_param{
 std::atomic<std::int_fast8_t> wing_position;
 int amplitude = 70;
 uint16_t timing = 0;
+
+std::vector<uint16_t> corner_tof(4,0);
+std::vector<uint16_t> last_corner_tof(64,0);
+std::vector<uint16_t> sensor_time(64,0);
+
+std::atomic<bool> out_of_range;
+std::atomic<uint8_t> counter_out_of_range;
 
 
 ornibibot_param ornibibot_parameter;
@@ -180,15 +189,15 @@ void obstacleAvoidance(){
                         obstacleMatrix.rightCols(IMAGE_WIDTH / 2).count();
       
       if (obstacleCounts(0) > obstacleCounts(1)){
-        String data_serial = "Turn right  " + (String)TURN_ANGLE + (String)millis();
-        Serial.println(data_serial);
+        // String data_serial = "Turn right  " + (String)TURN_ANGLE + (String)millis();
+        // Serial.println(data_serial);
       } else {
-        String data_serial = "Turn left  " + (String)TURN_ANGLE +  (String)millis();
-        Serial.println(data_serial);
+        // String data_serial = "Turn left  " + (String)TURN_ANGLE +  (String)millis();
+        // Serial.println(data_serial);
       }
     }
     else{
-      Serial.println("FORWARD");
+      // Serial.println("FORWARD");
     }
   }
 }
@@ -250,30 +259,67 @@ void loop()
 {
   ornibibot_parameter.frequency = 5;
 
+  i=0;
+
       //Poll sensor for new data
   if (newDataReady == true)
   {
     counter_tof = 0;
     newDataReady = false;
     if(myImager.getRangingData(&measurementData))
-      for (int y = 0; y < IMAGE_WIDTH; y++) {
-        for (int x = 0; x < IMAGE_WIDTH; x++) {
-          distanceMatrix(y, IMAGE_WIDTH - 1 - x) = measurementData.distance_mm[y * IMAGE_WIDTH + x];
-        }
+
+      corner_tof[0] = measurementData.distance_mm[0];
+      corner_tof[1] = measurementData.distance_mm[7];
+      corner_tof[2] = measurementData.distance_mm[56];
+      corner_tof[3] = measurementData.distance_mm[63];
+
+      out_of_range = false;
+
+      for(int i=0; i<corner_tof.size(); i++){
+          if(corner_tof[i] == last_corner_tof[i]) {out_of_range=true; break;}
       }
-      // for (int y = 0 ; y <= imageWidth * (imageWidth - 1) ; y += imageWidth)
-      // {
-      //   for (int x = imageWidth - 1 ; x >= 0 ; x--)
-      //   {
-      //     Serial.print("\t");
-      //     Serial.print(measurementData.distance_mm[x + y]);
+
+      if(out_of_range) counter_out_of_range++;
+      else counter_out_of_range = 0;
+      
+      // String data = (String) counter_out_of_range + "\t" + (String)corner_tof[0] + "\t" + (String)corner_tof[1] + "\t" + (String)corner_tof[2] + "\t" + (String)corner_tof[3];
+      // Serial.println(data);
+      // if(!out_of_range){
+      //   for (int y = 0; y < IMAGE_WIDTH; y++) {
+      //     for (int x = 0; x < IMAGE_WIDTH; x++) {
+      //       distanceMatrix(y, IMAGE_WIDTH - 1 - x) = measurementData.distance_mm[y * IMAGE_WIDTH + x];
+      //     }
       //   }
-      //   Serial.println();
       // }
-      // Serial.println();
-    }
-    else{
-      counter_tof++;
+
+      for (int y = 0 ; y <= imageWidth * (imageWidth - 1) ; y += imageWidth)
+      {
+        for (int x = imageWidth - 1 ; x >= 0 ; x--)
+        {
+          Serial.print("\t");
+          if(last_corner_tof[x + y] != measurementData.distance_mm[x + y]){
+            sensor_time[x + y] = 0;
+          }
+          else{
+            sensor_time[x + y] ++;
+          }
+
+          if(sensor_time[x + y] < 15)
+            Serial.print(measurementData.distance_mm[x + y]);
+          else
+            Serial.print("XX");
+
+          last_corner_tof[x + y] = measurementData.distance_mm[x + y];
+          //i++;
+        }
+        Serial.println();
+      }
+      Serial.println();
+
+      // for(int i=0; i < last_corner_tof.size(); i++){
+      //   last_corner_tof[i] = corner_tof[i];
+      // }
+
     }
 
     // Serial.println(counter_tof);
