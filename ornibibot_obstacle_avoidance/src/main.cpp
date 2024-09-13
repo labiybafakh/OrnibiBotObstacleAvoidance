@@ -12,7 +12,7 @@
 #include <vector>
 
 #define IMAGE_WIDTH 8  // Assuming 8x8 ToF sensor array
-#define SAFETY_DISTANCE 1000  // in mm
+#define SAFETY_DISTANCE 1200  // in mm
 #define TURN_ANGLE 30  // degrees to turn when obstacle detected
 #define INT_TOF 13
 
@@ -29,6 +29,8 @@ VL53L5CX_ResultsData measurementData;
 
 int imageResolution = 0; 
 int imageWidth = 0; 
+
+uint16_t distance =0;
 
 volatile uint8_t counter_tof=0;
 // Global variables
@@ -189,23 +191,23 @@ void obstacleAvoidance(){
                         obstacleMatrix.rightCols(IMAGE_WIDTH / 2).count();
       
       if (obstacleCounts(0) > obstacleCounts(1)){
-        // String data_serial = "Turn right  " + (String)TURN_ANGLE + (String)millis();
-        // Serial.println(data_serial);
+        String data_serial = "Turn right  " + (String)TURN_ANGLE + (String)millis();
+        Serial.println(data_serial);
       } else {
-        // String data_serial = "Turn left  " + (String)TURN_ANGLE +  (String)millis();
-        // Serial.println(data_serial);
+        String data_serial = "Turn left  " + (String)TURN_ANGLE +  (String)millis();
+        Serial.println(data_serial);
       }
     }
     else{
-      // Serial.println("FORWARD");
+      Serial.println("FORWARD");
     }
   }
 }
 
 
-void tofHandler(){
-  Serial5.write(0x01);
-}
+// void tofHandler(){
+//   Serial5.print(ornibibot_parameter.roll);
+// }
 
 void interruptRoutine()
 {
@@ -248,8 +250,8 @@ void setup()
   interpolation_pattern_timer.priority(0);
   sbus_update_timer.begin(motorUpdate, 5000);
   sbus_update_timer.priority(1);
-  tof_timer.begin(tofHandler, 5000);
-  tof_timer.priority(2);
+  // tof_timer.begin(tofHandler, 5000);
+  // tof_timer.priority(2);
   obstacle_avoidance_timer.begin(obstacleAvoidance, 5000);
   obstacle_avoidance_timer.priority(3);
 
@@ -257,7 +259,7 @@ void setup()
 
 void loop()
 {
-  ornibibot_parameter.frequency = 5;
+  // ornibibot_parameter.frequency = 5;
 
   i=0;
 
@@ -296,7 +298,7 @@ void loop()
       {
         for (int x = imageWidth - 1 ; x >= 0 ; x--)
         {
-          Serial.print("\t");
+          // Serial.print("\t");
           if(last_corner_tof[x + y] != measurementData.distance_mm[x + y]){
             sensor_time[x + y] = 0;
           }
@@ -304,17 +306,29 @@ void loop()
             sensor_time[x + y] ++;
           }
 
+          int row = y / IMAGE_WIDTH;
+          int col = IMAGE_WIDTH - 1 - x;
+            
           if(sensor_time[x + y] < 15)
-            Serial.print(measurementData.distance_mm[x + y]);
+            // distanceMatrix(y, IMAGE_WIDTH - 1 - x) = measurementData.distance_mm[y * IMAGE_WIDTH + x];
+            // Serial.print(measurementData.distance_mm[x + y]);
+            distance = measurementData.distance_mm[y + x];
+
           else
-            Serial.print("XX");
+            // distanceMatrix(y, IMAGE_WIDTH - 1 - x) = 4000;
+              distance = 4000;
+          
+          distanceMatrix(row, col) = distance;
+
+
+            // Serial.print("XX");
 
           last_corner_tof[x + y] = measurementData.distance_mm[x + y];
           //i++;
         }
-        Serial.println();
+        // Serial.println();
       }
-      Serial.println();
+      // Serial.println();
 
       // for(int i=0; i < last_corner_tof.size(); i++){
       //   last_corner_tof[i] = corner_tof[i];
@@ -323,4 +337,18 @@ void loop()
     }
 
     // Serial.println(counter_tof);
+}
+
+
+void serialEvent5(){
+  while(Serial5.available()){
+    uint8_t flag_fly = Serial5.read();
+    Serial.println(flag_fly);
+    Serial5.write(ornibibot_parameter.roll);
+
+    if(flag_fly == 0) ornibibot_parameter.frequency = 0.0;
+    else{
+      ornibibot_parameter.frequency = 5.0;
+    }
+  }
 }
