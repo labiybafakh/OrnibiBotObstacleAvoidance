@@ -191,15 +191,18 @@ void obstacleAvoidance(){
                         obstacleMatrix.rightCols(IMAGE_WIDTH / 2).count();
       
       if (obstacleCounts(0) > obstacleCounts(1)){
-        String data_serial = "Turn right  " + (String)TURN_ANGLE + (String)millis();
-        Serial.println(data_serial);
+        // String data_serial = "Turn right  " + (String)TURN_ANGLE + (String)millis();
+        // Serial.println(data_serial);
+        ornibibot_parameter.roll = 25;
       } else {
-        String data_serial = "Turn left  " + (String)TURN_ANGLE +  (String)millis();
-        Serial.println(data_serial);
+        // String data_serial = "Turn left  " + (String)TURN_ANGLE +  (String)millis();
+        // Serial.println(data_serial);
+        ornibibot_parameter.roll = -25;
       }
     }
     else{
-      Serial.println("FORWARD");
+      ornibibot_parameter.roll = 0;
+      // Serial.println("FORWARD");
     }
   }
 }
@@ -343,12 +346,13 @@ void loop()
 void serialEvent5(){
   while(Serial5.available()){
     uint8_t flag_fly = Serial5.read();
-    Serial.println(flag_fly);
+    flag_fly = flag_fly - 48;
+    // Serial.println(flag_fly);
     Serial5.write(ornibibot_parameter.roll);
 
-    if(flag_fly == 0) ornibibot_parameter.frequency = 0.0;
+    if(flag_fly == 1) ornibibot_parameter.frequency = 5.0;
     else{
-      ornibibot_parameter.frequency = 5.0;
+      ornibibot_parameter.frequency = 0.0;
     }
   }
 }

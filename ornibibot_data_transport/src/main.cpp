@@ -7,6 +7,11 @@
 #include <Adafruit_BMP280.h>
 #include "credentials.hpp"
 #include "messaging.hpp"
+#include <HardwareSerial.h>
+
+
+HardwareSerial SerialPort(0); // use UART1
+
 
 const char* ssid = WIFI_SSID;
 const char* password = WIFI_PASSWORD;
@@ -35,19 +40,17 @@ volatile char command_fly;
 void calibrateAltitude(float knownAltitude) {
     float pressure = bmp.readPressure() / 100.0F; // Get current pressure in hPa
     localSeaLevelPressure = pressure / pow(1.0 - (knownAltitude / 44330.0), 5.255);
-    // Serial.print("Calibrated sea level pressure: ");
-    // Serial.print(localSeaLevelPressure);
-    // Serial.println(" hPa");
+
 }
 
 void wifiTask(void *pvParameters) {
   WiFi.begin(ssid, password);
   while (WiFi.status() != WL_CONNECTED) {
     vTaskDelay(pdMS_TO_TICKS(1000));
-    Serial.println("Connecting to WiFi...");
+    // Serial.println("Connecting to WiFi...");
   }
-  Serial.println("Connected to WiFi");
-  Serial.println(WiFi.localIP());
+  // Serial.println("Connected to WiFi");
+  // Serial.println(WiFi.localIP());
   udp.begin(UDP_PORT);
   vTaskDelete(NULL);
 }
@@ -64,11 +67,11 @@ void sendDataTask(void *pvParameters) {
       int len = udp.read(incomingPacket, packetSize);
       incomingPacket[len] = 0; // Null-terminate the string
       if(WiFi.status() != WL_DISCONNECTED){
-        Serial.print(incomingPacket[0]);
+        SerialPort.print(incomingPacket[0]);
       }
       else{
         uint8_t stop = 0;
-        Serial.print(stop);
+        SerialPort.print(stop);
       }
     }
 
@@ -82,9 +85,10 @@ void sendDataTask(void *pvParameters) {
 
 void serialReadTask(void *pvParameters) {
   while (1) {
-    if (Serial.available()) {
+    if (SerialPort.available()) {
       xSemaphoreTake(dataAccessMutex, portMAX_DELAY);
-      turning_angle = Serial.read();
+        turning_angle = SerialPort.read();
+
       xSemaphoreGive(dataAccessMutex);
     }
     vTaskDelay(pdMS_TO_TICKS(10)); // Small delay to prevent task starvation
@@ -103,7 +107,7 @@ void sensorReadTask(void *pvParameters) {
   if (!bno.getEvent(&orientationData, Adafruit_BNO055::VECTOR_EULER) ||
       !bno.getEvent(&linearAccelData, Adafruit_BNO055::VECTOR_LINEARACCEL) ||
       !bno.getEvent(&gravityData, Adafruit_BNO055::VECTOR_GRAVITY)) {
-      Serial.println("Failed to read from BNO055");
+      // Serial.println("Failed to read from BNO055");
       readSuccess = false;
   }
 
@@ -113,7 +117,7 @@ void sensorReadTask(void *pvParameters) {
   float altitude = bmp.readAltitude(localSeaLevelPressure);
 
   if (isnan(temperature) || isnan(pressure) || isnan(altitude)) {
-          Serial.println("Failed to read from BMP280");
+          // Serial.println("Failed to read from BMP280");
           readSuccess = false;
       }
 
@@ -142,28 +146,28 @@ void sensorReadTask(void *pvParameters) {
 }
 
 void setup() {
-  Serial.begin(115200);
+  SerialPort.begin(115200);
   Wire.begin();
   Wire.setClock(100000); // Set I2C clock to 100kHz
 
   delay(1000);
 
   if (!bno.begin()) {
-    Serial.println("Failed to initialize BNO055!");
+    // Serial.println("Failed to initialize BNO055!");
     while (1) {
       delay(10);
     }
   }
-  Serial.println("BNO055 initialized successfully");
+  // Serial.println("BNO055 initialized successfully");
 
   // Initialize BMP280
   if (!bmp.begin(BMP280_ADDRESS)) {
-    Serial.println("Failed to initialize BMP280!");
+    // Serial.println("Failed to initialize BMP280!");
     while (1) {
       delay(10);
     }
   }
-  Serial.println("BMP280 initialized successfully");
+  // Serial.println("BMP280 initialized successfully");
 
   bmp.setSampling(Adafruit_BMP280::MODE_NORMAL,
                   Adafruit_BMP280::SAMPLING_X2,
