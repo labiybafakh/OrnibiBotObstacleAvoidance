@@ -13,7 +13,7 @@
 struct ornibibot_data{
     uint32_t timestamp;
     int16_t roll, pitch, yaw;
-    int8_t turning;
+    int turning;
     float temperature;
     float pressure;
     float altitude;

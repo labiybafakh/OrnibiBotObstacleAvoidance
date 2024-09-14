@@ -74,10 +74,11 @@ void sendDataTask(void *pvParameters) {
       }
     }
 
+    noInterrupts();
     udp.beginPacket(serverIP, serverPort);
-    ornibibot_data_.turning = 30;
-    udp.write((uint8_t*)&ornibibot_data_, sizeof(ornibibot_data));
+    udp.write((uint8_t*)&ornibibot_data_, sizeof(ornibibot_data_));
     udp.endPacket();
+    interrupts();
 
     vTaskDelayUntil(&xLastWakeTime, xFrequency);
   }
@@ -87,12 +88,9 @@ void serialReadTask(void *pvParameters) {
   TickType_t xLastWakeTime = xTaskGetTickCount();
   const TickType_t xFrequency = pdMS_TO_TICKS(5); // 1 second interval
   while (1) {
-    if (SerialPort.available()) {
-      // xSemaphoreTake(dataAccessMutex, portMAX_DELAY);
-        // ornibibot_data_.turning = (int8_t)SerialPort.read();
-
-      // xSemaphoreGive(dataAccessMutex);
-    }
+    if(SerialPort.available()) turning_angle = SerialPort.read();
+      ornibibot_data_.turning = static_cast<int>(turning_angle);
+      Serial.println(ornibibot_data_.turning);
     vTaskDelayUntil(&xLastWakeTime, xFrequency);
   }
 }
@@ -149,7 +147,6 @@ void sensorReadTask(void *pvParameters) {
 
 void setup() {
   SerialPort.begin(115200);
-  Serial.begin(115200);
   ornibibot_data_.turning = 0;
 
   // SerialPort.setRxIntMsk(true); // Enable the receive interrupt
@@ -199,10 +196,7 @@ void setup() {
 
 void loop() {
   // Empty. Tasks are handled by FreeRTOS
-  if(SerialPort.available())
-    turning_angle = SerialPort.read();
-    ornibibot_data_.turning = turning_angle;
-    Serial.println(ornibibot_data_.turning);
+
 }
 
 // void serialEvent1(){

@@ -11,11 +11,11 @@
 #include <ncurses.h>
 #include <iomanip>
 #include <sstream>
+#include <cstdlib>
 
 
 
 #define PORT 8080
-#define BUFFER_SIZE 1024
 
 std::atomic<uint8_t> flag_fly{0};  // Initialize with 's' (stopped)
 std::atomic<bool> is_recording{false};
@@ -25,14 +25,15 @@ std::ofstream csv_file;
 struct ornibibot_data{
     uint32_t timestamp;
     int16_t roll, pitch, yaw;
-    int8_t turning;
+    int turning;
     float temperature;
     float pressure;
     float altitude;
     float linear_accel_x, linear_accel_y, linear_accel_z;
-        float angular_x, angular_y, angular_z;
-
+    float angular_x, angular_y, angular_z;
 };
+
+const int BUFFER_SIZE = sizeof(ornibibot_data);
 
 std::string generate_filename() {
     auto now = std::chrono::system_clock::now();
@@ -58,20 +59,20 @@ void input_thread() {
 
                     csv_file.open(generate_filename());
                     if (csv_file.is_open()) {
-                        csv_file << "ornibibot_data_->timestamp" << ",";
-                        csv_file << "ornibibot_data_->turning" << ",";
-                        csv_file << "ornibibot_data_->linear_accel_x" << ",";
-                        csv_file << "ornibibot_data_->linear_accel_y" << ",";
-                        csv_file << "ornibibot_data_->linear_accel_z" << ",";
-                        csv_file << "ornibibot_data_->angular_x" << ",";
-                        csv_file << "ornibibot_data_->angular_y" << ",";
-                        csv_file << "ornibibot_data_->angular_z" << ",";
-                        csv_file << "ornibibot_data_->roll" << ",";
-                        csv_file << "ornibibot_data_->pitch" << ",";
-                        csv_file << "ornibibot_data_->yaw" << ",";
-                        csv_file << "ornibibot_data_->temperature" << ",";
-                        csv_file << "ornibibot_data_->pressure" << ",";
-                        csv_file << "ornibibot_data_->altitude\n";
+                        csv_file << "data->timestamp" << ",";
+                        csv_file << "data->turning" << ",";
+                        csv_file << "data->linear_accel_x" << ",";
+                        csv_file << "data->linear_accel_y" << ",";
+                        csv_file << "data->linear_accel_z" << ",";
+                        csv_file << "data->angular_x" << ",";
+                        csv_file << "data->angular_y" << ",";
+                        csv_file << "data->angular_z" << ",";
+                        csv_file << "data->roll" << ",";
+                        csv_file << "data->pitch" << ",";
+                        csv_file << "data->yaw" << ",";
+                        csv_file << "data->temperature" << ",";
+                        csv_file << "data->pressure" << ",";
+                        csv_file << "data->altitude\n";
                         std::cout << "Started recording to CSV." << std::endl;
                     } else {
                         std::cerr << "Failed to open CSV file" << std::endl;
@@ -145,44 +146,45 @@ int main() {
 
         socklen_t len = sizeof(cliaddr);  // Use socklen_t for address length
         
+        memset(buffer, '\0', BUFFER_SIZE);
         ssize_t n = recvfrom(sockfd, buffer, BUFFER_SIZE, 0, 
                     (struct sockaddr *) &cliaddr, &len);
         
         if (n == sizeof(ornibibot_data)) {
-            ornibibot_data* ornibibot_data_ = (ornibibot_data*)buffer;
-            
+            ornibibot_data* data = reinterpret_cast<ornibibot_data*>(buffer);
+
             if(is_recording){
-                    csv_file << ornibibot_data_->timestamp << ",";
-                    csv_file << ornibibot_data_->turning << ",";
-                    csv_file << ornibibot_data_->linear_accel_x << ",";
-                    csv_file << ornibibot_data_->linear_accel_y << ",";
-                    csv_file << ornibibot_data_->linear_accel_z << ",";
-                    csv_file << ornibibot_data_->angular_x << ",";
-                    csv_file << ornibibot_data_->angular_y << ",";
-                    csv_file << ornibibot_data_->angular_z << ",";
-                    csv_file << ornibibot_data_->roll << ",";
-                    csv_file << ornibibot_data_->pitch << ",";
-                    csv_file << ornibibot_data_->yaw << ",";
-                    csv_file << ornibibot_data_->temperature << ",";
-                    csv_file << ornibibot_data_->pressure << ",";
-                    csv_file << ornibibot_data_->altitude << "\n";
+                    csv_file << data->timestamp << ",";
+                    csv_file << static_cast<int>(data->turning) << ",";
+                    csv_file << data->linear_accel_x << ",";
+                    csv_file << data->linear_accel_y << ",";
+                    csv_file << data->linear_accel_z << ",";
+                    csv_file << data->angular_x << ",";
+                    csv_file << data->angular_y << ",";
+                    csv_file << data->angular_z << ",";
+                    csv_file << data->roll << ",";
+                    csv_file << data->pitch << ",";
+                    csv_file << data->yaw << ",";
+                    csv_file << data->temperature << ",";
+                    csv_file << data->pressure << ",";
+                    csv_file << data->altitude << "\n";
 
             }
-            // std::cout << "Received ornibibot_data from " << inet_ntoa(cliaddr.sin_addr) << ":" << ntohs(cliaddr.sin_port) << std::endl;
-            // std::cout << "Timestamp: " << ornibibot_data_->timestamp << std::endl;
-            // std::cout << "Roll: " << ornibibot_data_->roll << std::endl;
-            // std::cout << "Pitch: " << ornibibot_data_->pitch << std::endl;
-            // std::cout << "Yaw: " << ornibibot_data_->yaw << std::endl;
-            // std::cout << "Lin-x: " << ornibibot_data_->linear_accel_x << std::endl;
-            // std::cout << "Lin-y: " << ornibibot_data_->linear_accel_y << std::endl;
-            // std::cout << "Lin-z: " << ornibibot_data_->linear_accel_z << std::endl;
-            // std::cout << "Ang-x: " << ornibibot_data_->linear_accel_x << std::endl;
-            // std::cout << "Ang-y: " << ornibibot_data_->linear_accel_y << std::endl;
-            // std::cout << "Ang-z: " << ornibibot_data_->linear_accel_z << std::endl;
-            // std::cout << "Turning: " << ornibibot_data_->turning << std::endl;
-            // std::cout << "Altitude: " << ornibibot_data_->altitude << std::endl;
-            // std::cout << "Pressure: " << ornibibot_data_->pressure << std::endl;
-            // std::cout << "Temparature: " << ornibibot_data_->temperature << std::endl;
+            std::cout << "Received ornibibot_data from " << inet_ntoa(cliaddr.sin_addr) << ":" << ntohs(cliaddr.sin_port) << std::endl;
+            std::cout << "Timestamp: " << data->timestamp << std::endl;
+            std::cout << "Roll: " << data->roll << std::endl;
+            std::cout << "Pitch: " << data->pitch << std::endl;
+            std::cout << "Yaw: " << data->yaw << std::endl;
+            std::cout << "Lin-x: " << data->linear_accel_x << std::endl;
+            std::cout << "Lin-y: " << data->linear_accel_y << std::endl;
+            std::cout << "Lin-z: " << data->linear_accel_z << std::endl;
+            std::cout << "Ang-x: " << data->linear_accel_x << std::endl;
+            std::cout << "Ang-y: " << data->linear_accel_y << std::endl;
+            std::cout << "Ang-z: " << data->linear_accel_z << std::endl;
+            std::cout << "Turning: " << data->turning << std::endl;
+            std::cout << "Altitude: " << data->altitude << std::endl;
+            std::cout << "Pressure: " << data->pressure << std::endl;
+            std::cout << "Temparature: " << data->temperature << std::endl;
         }
     }
 
