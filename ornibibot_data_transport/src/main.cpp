@@ -22,7 +22,6 @@ float knownAltitude = 105.0;
 float localSeaLevelPressure;
 
 WiFiUDP udp;
-WiFiUDP udpReceive;
 
 volatile ornibibot_data ornibibot_data_;
 
@@ -76,6 +75,7 @@ void sendDataTask(void *pvParameters) {
     }
 
     udp.beginPacket(serverIP, serverPort);
+    ornibibot_data_.turning = 30;
     udp.write((uint8_t*)&ornibibot_data_, sizeof(ornibibot_data));
     udp.endPacket();
 
@@ -84,14 +84,16 @@ void sendDataTask(void *pvParameters) {
 }
 
 void serialReadTask(void *pvParameters) {
+  TickType_t xLastWakeTime = xTaskGetTickCount();
+  const TickType_t xFrequency = pdMS_TO_TICKS(5); // 1 second interval
   while (1) {
     if (SerialPort.available()) {
-      xSemaphoreTake(dataAccessMutex, portMAX_DELAY);
-        turning_angle = SerialPort.read();
+      // xSemaphoreTake(dataAccessMutex, portMAX_DELAY);
+        // ornibibot_data_.turning = (int8_t)SerialPort.read();
 
-      xSemaphoreGive(dataAccessMutex);
+      // xSemaphoreGive(dataAccessMutex);
     }
-    vTaskDelay(pdMS_TO_TICKS(10)); // Small delay to prevent task starvation
+    vTaskDelayUntil(&xLastWakeTime, xFrequency);
   }
 }
 
@@ -122,7 +124,7 @@ void sensorReadTask(void *pvParameters) {
       }
 
       if (readSuccess) {
-          xSemaphoreTake(dataAccessMutex, portMAX_DELAY);
+          // xSemaphoreTake(dataAccessMutex, portMAX_DELAY);
           ornibibot_data_.timestamp = millis();
           ornibibot_data_.roll = orientationData.orientation.y;
           ornibibot_data_.pitch = orientationData.orientation.z;
@@ -130,16 +132,16 @@ void sensorReadTask(void *pvParameters) {
           ornibibot_data_.linear_accel_x = linearAccelData.acceleration.x;
           ornibibot_data_.linear_accel_y = linearAccelData.acceleration.y;
           ornibibot_data_.linear_accel_z = linearAccelData.acceleration.z;
-          ornibibot_data_.turning = turning_angle;
+          // ornibibot_data_.turning = turning_angle;
           ornibibot_data_.temperature = temperature;
           ornibibot_data_.pressure = pressure / 100.0F; // Convert Pa to hPa
           ornibibot_data_.altitude = altitude;
 
           // Serial.println(ornibibot_data_.altitude);
-          xSemaphoreGive(dataAccessMutex);
+          // xSemaphoreGive(dataAccessMutex);
       } else {
           // If read failed, wait a bit before trying again
-          vTaskDelay(pdMS_TO_TICKS(1000));
+          vTaskDelay(pdMS_TO_TICKS(20));
       }
     vTaskDelayUntil(&xLastWakeTime, xFrequency);
   }
@@ -147,6 +149,11 @@ void sensorReadTask(void *pvParameters) {
 
 void setup() {
   SerialPort.begin(115200);
+  Serial.begin(115200);
+  ornibibot_data_.turning = 0;
+
+  // SerialPort.setRxIntMsk(true); // Enable the receive interrupt
+
   Wire.begin();
   Wire.setClock(100000); // Set I2C clock to 100kHz
 
@@ -184,7 +191,7 @@ void setup() {
 
   xTaskCreate(wifiTask, "WiFi Connection", 4096, NULL, 1, NULL);
   xTaskCreate(sendDataTask, "Send UDP Data", 4096, NULL, 1, NULL);
-  xTaskCreate(serialReadTask, "Serial Read", 2048, NULL, 1, NULL);
+  // xTaskCreate(serialReadTask, "Serial Read", 2048, NULL, 1, NULL);
   xTaskCreate(sensorReadTask, "Sensor Read", 4096, NULL, 2, NULL); // Higher priority for sensor reading
   // xTaskCreate(receiveUdpTask, "Receive UDP Data", 4096, NULL, 1, NULL);
 
@@ -192,4 +199,16 @@ void setup() {
 
 void loop() {
   // Empty. Tasks are handled by FreeRTOS
+  if(SerialPort.available())
+    turning_angle = SerialPort.read();
+    ornibibot_data_.turning = turning_angle;
+    Serial.println(ornibibot_data_.turning);
 }
+
+// void serialEvent1(){
+//   while(SerialPort.available()){
+//     int8_t data_ = SerialPort.read();
+
+//     // ornibibot_data_.turning = data_;
+//   }
+// }

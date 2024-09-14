@@ -208,9 +208,9 @@ void obstacleAvoidance(){
 }
 
 
-// void tofHandler(){
-//   Serial5.print(ornibibot_parameter.roll);
-// }
+void tofHandler(){
+    Serial5.write((int8_t)ornibibot_parameter.roll);
+}
 
 void interruptRoutine()
 {
@@ -253,8 +253,8 @@ void setup()
   interpolation_pattern_timer.priority(0);
   sbus_update_timer.begin(motorUpdate, 5000);
   sbus_update_timer.priority(1);
-  // tof_timer.begin(tofHandler, 5000);
-  // tof_timer.priority(2);
+  tof_timer.begin(tofHandler, 5000);
+  tof_timer.priority(2);
   obstacle_avoidance_timer.begin(obstacleAvoidance, 5000);
   obstacle_avoidance_timer.priority(3);
 
@@ -348,7 +348,6 @@ void serialEvent5(){
     uint8_t flag_fly = Serial5.read();
     flag_fly = flag_fly - 48;
     // Serial.println(flag_fly);
-    Serial5.write(ornibibot_parameter.roll);
 
     if(flag_fly == 1) ornibibot_parameter.frequency = 5.0;
     else{
