@@ -158,13 +158,13 @@ int main() {
                     csv_file << static_cast<int>(data->turning) << ",";
                     csv_file << data->linear_accel_x << ",";
                     csv_file << data->linear_accel_y << ",";
-                    csv_file << data->linear_accel_z << ",";
-                    csv_file << data->angular_x << ",";
-                    csv_file << data->angular_y << ",";
+                    csv_file << data->linear_accel_z * -1 << ",";
+                    csv_file << data->angular_x * -1 << ",";
+                    csv_file << data->angular_y * -1 << ",";
                     csv_file << data->angular_z << ",";
-                    csv_file << data->roll << ",";
-                    csv_file << data->pitch << ",";
-                    csv_file << data->yaw << ",";
+                    csv_file << data->pitch << ","; //roll
+                    csv_file << data->roll << ","; //pitch
+                    csv_file << data->yaw*-1 << ","; //yaw
                     csv_file << data->temperature << ",";
                     csv_file << data->pressure << ",";
                     csv_file << data->altitude << "\n";
@@ -172,16 +172,16 @@ int main() {
             }
             std::cout << "Received ornibibot_data from " << inet_ntoa(cliaddr.sin_addr) << ":" << ntohs(cliaddr.sin_port) << std::endl;
             std::cout << "Timestamp: " << data->timestamp << std::endl;
-            std::cout << "Roll: " << data->roll << std::endl;
-            std::cout << "Pitch: " << data->pitch << std::endl;
-            std::cout << "Yaw: " << data->yaw << std::endl;
+            std::cout << "Roll: " << data->pitch << std::endl;
+            std::cout << "Pitch: " <<  data->roll << std::endl;
+            std::cout << "Yaw: " << data->yaw*-1 << std::endl;
             std::cout << "Lin-x: " << data->linear_accel_x << std::endl;
             std::cout << "Lin-y: " << data->linear_accel_y << std::endl;
-            std::cout << "Lin-z: " << data->linear_accel_z << std::endl;
-            std::cout << "Ang-x: " << data->linear_accel_x << std::endl;
-            std::cout << "Ang-y: " << data->linear_accel_y << std::endl;
-            std::cout << "Ang-z: " << data->linear_accel_z << std::endl;
-            std::cout << "Turning: " << data->turning << std::endl;
+            std::cout << "Lin-z: " << data->linear_accel_z * -1 << std::endl;
+            std::cout << "Ang-x: " << data->angular_x*-1 << std::endl;
+            std::cout << "Ang-y: " << data->angular_y*-1 << std::endl;
+            std::cout << "Ang-z: " << data->angular_z << std::endl;
+            std::cout << "Turning: " << static_cast<int>(data->turning) << std::endl;
             std::cout << "Altitude: " << data->altitude << std::endl;
             std::cout << "Pressure: " << data->pressure << std::endl;
             std::cout << "Temparature: " << data->temperature << std::endl;

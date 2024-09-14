@@ -67,18 +67,20 @@ void sendDataTask(void *pvParameters) {
       incomingPacket[len] = 0; // Null-terminate the string
       if(WiFi.status() != WL_DISCONNECTED){
         SerialPort.print(incomingPacket[0]);
+        // digitalWrite(LED_BUILTIN, HIGH);
       }
       else{
         uint8_t stop = 0;
+        // digitalWrite(LED_BUILTIN_LOW)
         SerialPort.print(stop);
       }
     }
-
-    noInterrupts();
+    
+    // noInterrupts();
     udp.beginPacket(serverIP, serverPort);
     udp.write((uint8_t*)&ornibibot_data_, sizeof(ornibibot_data_));
     udp.endPacket();
-    interrupts();
+    // interrupts();
 
     vTaskDelayUntil(&xLastWakeTime, xFrequency);
   }
@@ -88,15 +90,18 @@ void serialReadTask(void *pvParameters) {
   TickType_t xLastWakeTime = xTaskGetTickCount();
   const TickType_t xFrequency = pdMS_TO_TICKS(5); // 1 second interval
   while (1) {
-    if(SerialPort.available()) turning_angle = SerialPort.read();
-      ornibibot_data_.turning = static_cast<int>(turning_angle);
-      Serial.println(ornibibot_data_.turning);
+    if (SerialPort.available()) {
+      // xSemaphoreTake(dataAccessMutex, portMAX_DELAY);
+        // ornibibot_data_.turning = (int8_t)SerialPort.read();
+
+      // xSemaphoreGive(dataAccessMutex);
+    }
     vTaskDelayUntil(&xLastWakeTime, xFrequency);
   }
 }
 
 void sensorReadTask(void *pvParameters) {
-  sensors_event_t orientationData, linearAccelData, gravityData;
+  sensors_event_t orientationData, linearAccelData, gyroData;
   TickType_t xLastWakeTime = xTaskGetTickCount();
   const TickType_t xFrequency = pdMS_TO_TICKS(20); // 100Hz update rate
   bool readSuccess = true;
@@ -106,7 +111,7 @@ void sensorReadTask(void *pvParameters) {
       // Read BNO055 data
   if (!bno.getEvent(&orientationData, Adafruit_BNO055::VECTOR_EULER) ||
       !bno.getEvent(&linearAccelData, Adafruit_BNO055::VECTOR_LINEARACCEL) ||
-      !bno.getEvent(&gravityData, Adafruit_BNO055::VECTOR_GRAVITY)) {
+      !bno.getEvent(&gyroData, Adafruit_BNO055::VECTOR_GYROSCOPE)) {
       // Serial.println("Failed to read from BNO055");
       readSuccess = false;
   }
@@ -130,6 +135,9 @@ void sensorReadTask(void *pvParameters) {
           ornibibot_data_.linear_accel_x = linearAccelData.acceleration.x;
           ornibibot_data_.linear_accel_y = linearAccelData.acceleration.y;
           ornibibot_data_.linear_accel_z = linearAccelData.acceleration.z;
+          ornibibot_data_.angular_x = gyroData.gyro.x;
+          ornibibot_data_.angular_y = gyroData.gyro.y;
+          ornibibot_data_.angular_z = gyroData.gyro.z;
           // ornibibot_data_.turning = turning_angle;
           ornibibot_data_.temperature = temperature;
           ornibibot_data_.pressure = pressure / 100.0F; // Convert Pa to hPa
@@ -196,7 +204,10 @@ void setup() {
 
 void loop() {
   // Empty. Tasks are handled by FreeRTOS
-
+  if(SerialPort.available())
+    turning_angle = SerialPort.read();
+    ornibibot_data_.turning = static_cast<int>(turning_angle);
+    Serial.println(ornibibot_data_.turning);
 }
 
 // void serialEvent1(){
